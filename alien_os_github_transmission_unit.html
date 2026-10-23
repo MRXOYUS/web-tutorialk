@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALIEN OS // GITHUB TRANSMISSION UNIT</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        alien: {
+                            green: '#00ff66',
+                            bright: '#39ff14',
+                            dark: '#05070d',
+                            bg: '#0B0F19',
+                            panel: 'rgba(18, 24, 38, 0.75)',
+                            border: 'rgba(0, 255, 102, 0.3)',
+                            glow: 'rgba(57, 255, 20, 0.15)'
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['Fira Code', 'Courier New', 'monospace'],
+                    },
+                    boxShadow: {
+                        'alien-glow': '0 0 20px rgba(0, 255, 102, 0.35)',
+                        'alien-glow-lg': '0 0 35px rgba(57, 255, 20, 0.5)',
+                        'alien-inset': 'inset 0 0 15px rgba(0, 255, 102, 0.2)'
+                    },
+                    keyframes: {
+                        pulseGlow: {
+                            '0%, 100%': { boxShadow: '0 0 15px rgba(0, 255, 102, 0.3)' },
+                            '50%': { boxShadow: '0 0 30px rgba(57, 255, 20, 0.7)' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-12px)' },
+                        },
+                        scanline: {
+                            '0%': { transform: 'translateY(-100%)' },
+                            '100%': { transform: 'translateY(1000%)' }
+                        }
+                    },
+                    animation: {
+                        'pulse-glow': 'pulseGlow 3s infinite ease-in-out',
+                        'float': 'float 4s infinite ease-in-out',
+                        'scanline': 'scanline 8s linear infinite'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Fira Code', monospace;
+            background-color: #05070d;
+            color: #00ff66;
+            overflow-x: hidden;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #05070d;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #00ff66;
+            border-radius: 4px;
+            box-shadow: 0 0 10px #00ff66;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #39ff14;
+        }
+
+        /* Glassmorphism Panel */
+        .glass-panel {
+            background: rgba(11, 15, 25, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 255, 102, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.7), inset 0 0 10px rgba(0, 255, 102, 0.05);
+        }
+
+        /* Scanline Overlay Effect */
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.25) 50%
+            ), linear-gradient(
+                90deg,
+                rgba(255, 0, 0, 0.03),
+                rgba(0, 255, 0, 0.01),
+                rgba(0, 0, 255, 0.03)
+            );
+            background-size: 100% 3px, 6px 100%;
+            z-index: 40;
+            opacity: 0.6;
+        }
+
+        /* Matrix Canvas */
+        #matrixCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            opacity: 0.25;
+            pointer-events: none;
+        }
+
+        /* CRT Glitch Effect on Hover */
+        .glitch-hover:hover {
+            text-shadow: 2px 0 #00ff66, -2px 0 #39ff14;
+        }
+    </style>
+</head>
+<body class="relative min-h-screen text-alien-green selection:bg-alien-green selection:text-black">
+
+    <!-- Scanline Screen Effect -->
+    <div class="scanlines"></div>
+
+    <!-- Matrix Rain Canvas Background -->
+    <canvas id="matrixCanvas"></canvas>
+
+    <!-- Main Container Wrapper -->
+    <div class="relative z-10 flex flex-col min-h-screen max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 gap-8">
+
+        <!-- NAVBAR / TOP HEADER -->
+        <header class="glass-panel rounded-2xl p-4 sm:p-6 flex flex-wrap items-center justify-between gap-4 border-alien-border animate-pulse-glow">
+            <div class="flex items-center gap-4">
+                <!-- Alien Mascot SVG with Interactive Tracking Eyes -->
+                <div id="alienMascot" class="relative w-14 h-14 cursor-pointer flex-shrink-0 animate-float" title="Click Alien for SFX!">
+                    <svg viewBox="0 0 100 100" class="w-full h-full filter drop-shadow-[0_0_8px_#00ff66]">
+                        <!-- Head -->
+                        <path d="M50 5 C20 5 10 35 10 60 C10 85 30 95 50 95 C70 95 90 85 90 60 C90 35 80 5 50 5 Z" fill="#00ff66" stroke="#39ff14" stroke-width="2"/>
+                        <!-- Antennas -->
+                        <path d="M30 15 L15 2" stroke="#00ff66" stroke-width="4" stroke-linecap="round"/>
+                        <circle cx="15" cy="2" r="5" fill="#39ff14" class="animate-pulse"/>
+                        <path d="M70 15 L85 2" stroke="#00ff66" stroke-width="4" stroke-linecap="round"/>
+                        <circle cx="85" cy="2" r="5" fill="#39ff14" class="animate-pulse"/>
+                        <!-- Left Eye Socket -->
+                        <ellipse cx="32" cy="50" rx="14" ry="20" fill="#05070d" stroke="#00ff66" stroke-width="1.5"/>
+                        <!-- Left Pupil -->
+                        <circle id="leftPupil" cx="32" cy="50" r="6" fill="#39ff14" />
+                        <!-- Right Eye Socket -->
+                        <ellipse cx="68" cy="50" rx="14" ry="20" fill="#05070d" stroke="#00ff66" stroke-width="1.5"/>
+                        <!-- Right Pupil -->
+                        <circle id="rightPupil" cx="68" cy="50" r="6" fill="#39ff14" />
+                        <!-- Mouth -->
+                        <path d="M42 75 Q50 82 58 75" fill="transparent" stroke="#05070d" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                </div>
+
+                <div>
+                    <h1 class="text-lg sm:text-2xl font-bold tracking-wider text-white glitch-hover flex items-center gap-2">
+                        ALIEN OS <span class="text-alien-green text-sm sm:text-base font-normal">// GITHUB TRANSMISSION UNIT</span>
+                    </h1>
+                    <p class="text-xs text-alien-green/70 flex items-center gap-2 mt-1">
+                        <span class="inline-block w-2 h-2 rounded-full bg-alien-bright animate-ping"></span>
+                        SYSTEM FREQUENCY: <span class="text-white">1420.405 MHz (SETI LINK)</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Status & Controls -->
+            <div class="flex items-center gap-3 sm:gap-6 flex-wrap">
+                <div class="hidden md:flex flex-col text-right text-xs">
+                    <span class="text-alien-green/60">SIGNAL STATUS:</span>
+                    <span class="text-alien-bright font-bold tracking-widest" id="signalStatus">CONNECTED [100%]</span>
+                </div>
+
+                <!-- Sound FX Toggle Button -->
+                <button id="sfxToggleBtn" class="glass-panel px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 border border-alien-green/40 hover:border-alien-bright hover:bg-alien-green/10 transition-all duration-300 active:scale-95">
+                    <i id="sfxIcon" class="fas fa-volume-high text-alien-bright"></i>
+                    <span id="sfxText" class="text-white">SFX: ON</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN DASHBOARD GRID -->
+        <main class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+            <!-- LEFT COLUMN: GITHUB DECODER & ALIEN CODE TRANSFORMER -->
+            <section class="lg:col-span-7 flex flex-col gap-8">
+
+                <!-- MODULE 1: GITHUB ALIEN DECODER -->
+                <div class="glass-panel rounded-2xl p-6 relative overflow-hidden flex flex-col gap-5">
+                    <div class="flex items-center justify-between border-b border-alien-border/40 pb-3">
+                        <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                            <i class="fab fa-github text-alien-bright text-xl"></i>
+                            EXTRATERRESTRIAL PROFILE DECODER
+                        </h2>
+                        <span class="text-xs px-2.5 py-1 rounded-full bg-alien-green/10 border border-alien-green/30 text-alien-bright">SCANNER V2.4</span>
+                    </div>
+
+                    <!-- Search Input -->
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <div class="relative flex-grow">
+                            <i class="fas fa-user-astronaut absolute left-4 top-1/2 -translate-y-1/2 text-alien-green/60"></i>
+                            <input type="text" id="githubUsernameInput" placeholder="Enter GitHub Username (e.g. torvalds)..." class="w-full bg-alien-dark/80 border border-alien-border rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder-alien-green/40 focus:outline-none focus:border-alien-bright focus:ring-1 focus:ring-alien-bright transition-all">
+                        </div>
+                        <button id="fetchGithubBtn" class="bg-alien-green text-alien-dark hover:bg-alien-bright font-bold px-6 py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(0,255,102,0.4)] hover:shadow-[0_0_25px_rgba(57,255,20,0.7)] active:scale-95">
+                            <i class="fas fa-radar"></i>
+                            <span>SCAN SIGNAL</span>
+                        </button>
+                    </div>
+
+                    <!-- Profile Output Card Container -->
+                    <div id="githubProfileOutput" class="min-h-[220px] bg-alien-dark/60 rounded-xl p-5 border border-alien-border/30 flex items-center justify-center relative">
+                        <!-- Default Placeholder state -->
+                        <div id="profilePlaceholder" class="text-center text-alien-green/50 py-8">
+                            <i class="fas fa-satellite-dish text-4xl mb-3 text-alien-green/30 animate-pulse"></i>
+                            <p class="text-sm">Enter a GitHub username to initiate deep space telemetry transmission.</p>
+                        </div>
+
+                        <!-- Dynamic Profile Content Inserted via JS -->
+                        <div id="profileDataContent" class="hidden w-full space-y-4"></div>
+                    </div>
+                </div>
+
+                <!-- MODULE 2: ALIEN CODE & GLYPH TRANSFORMER -->
+                <div class="glass-panel rounded-2xl p-6 flex flex-col gap-5">
+                    <div class="flex items-center justify-between border-b border-alien-border/40 pb-3">
+                        <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                            <i class="fas fa-code text-alien-bright"></i>
+                            CYBER GLYPH & CODE TRANSFORMER
+                        </h2>
+                        <span class="text-xs text-alien-green/60">ENCRYPTION ENGINE</span>
+                    </div>
+
+                    <div class="flex flex-col gap-3">
+                        <label for="glyphInput" class="text-xs text-alien-green/80 uppercase tracking-wider">Human Text Input:</label>
+                        <textarea id="glyphInput" rows="2" placeholder="Type text to translate into alien cyber code..." class="w-full bg-alien-dark/80 border border-alien-border rounded-xl p-3 text-sm text-white placeholder-alien-green/30 focus:outline-none focus:border-alien-bright transition-all resize-none">GREETINGS EARTHLING // WE COME IN PEACE</textarea>
+                    </div>
+
+                    <!-- Output Box -->
+                    <div class="flex flex-col gap-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-alien-bright uppercase tracking-wider">Transmitted Alien Cipher:</span>
+                            <button id="copyGlyphBtn" class="text-xs text-alien-green hover:text-white flex items-center gap-1 transition-colors">
+                                <i class="fas fa-copy"></i> COPY CIPHER
+                            </button>
+                        </div>
+                        <div id="glyphOutput" class="bg-alien-dark border border-alien-border/60 rounded-xl p-4 text-xs sm:text-sm font-mono text-alien-bright break-all min-h-[70px] shadow-alien-inset flex items-center">
+                            ⎎⌰⍜⍜⌿ // ☌⍀⟒⟒⟁⟟⋏☌⌇ ⟒⏃ his 22⟟⋏☌ // ⍙⟒ ☊ me ⟒ ⟟⋏ 2⟒⏃☊⟒
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- RIGHT COLUMN: MINI-GAME & TERMINAL -->
+            <section class="lg:col-span-5 flex flex-col gap-8">
+
+                <!-- MODULE 3: UFO ABDUCTION INVADERS MINI-GAME -->
+                <div class="glass-panel rounded-2xl p-6 flex flex-col gap-4 relative overflow-hidden">
+                    <div class="flex items-center justify-between border-b border-alien-border/40 pb-3">
+                        <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                            <i class="fas fa-rocket text-alien-bright"></i>
+                            UFO ABDUCTION INVADERS
+                        </h2>
+                        <div class="flex items-center gap-3 text-xs">
+                            <span class="text-white">SCORE: <span id="gameScore" class="text-alien-bright font-bold">0</span></span>
+                            <span class="text-alien-green/60">BEST: <span id="gameHighScore" class="text-white">0</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Game Screen Frame -->
+                    <div class="relative w-full aspect-video bg-alien-dark rounded-xl border border-alien-border/60 overflow-hidden shadow-alien-inset group">
+                        <canvas id="ufoGameCanvas" class="w-full h-full block cursor-none"></canvas>
+
+                        <!-- Start / Game Over Overlay -->
+                        <div id="gameOverlay" class="absolute inset-0 bg-alien-dark/90 backdrop-blur-sm flex flex-col items-center justify-center p-4 text-center z-20">
+                            <i class="fas fa-shuttle-space text-4xl text-alien-bright mb-2 animate-bounce"></i>
+                            <h3 id="overlayTitle" class="text-xl font-bold text-white mb-1">BEAM UP THE OCTOCATS!</h3>
+                            <p id="overlaySubtitle" class="text-xs text-alien-green/80 mb-4 max-w-xs">Use Left/Right arrows, A/D, or Touch/Mouse drag to control the UFO. Catch GitHub Stars & Octocats, avoid Asteroids!</p>
+                            <button id="startGameBtn" class="bg-alien-green text-alien-dark font-bold px-6 py-2.5 rounded-xl hover:bg-alien-bright transition-all shadow-[0_0_15px_#00ff66] hover:scale-105 active:scale-95">
+                                START MISSION
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Game Touch Controls -->
+                    <div class="flex lg:hidden justify-between items-center gap-4 mt-1">
+                        <button id="btnMoveLeft" class="flex-1 py-3 bg-alien-dark border border-alien-border/50 rounded-xl active:bg-alien-green/20 text-alien-bright font-bold text-lg flex items-center justify-center">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <button id="btnMoveRight" class="flex-1 py-3 bg-alien-dark border border-alien-border/50 rounded-xl active:bg-alien-green/20 text-alien-bright font-bold text-lg flex items-center justify-center">
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- MODULE 4: ALIEN CYBER TERMINAL -->
+                <div class="glass-panel rounded-2xl p-6 flex flex-col gap-3 flex-grow">
+                    <div class="flex items-center justify-between border-b border-alien-border/40 pb-2">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                            <div class="w-3 h-3 rounded-full bg-alien-bright"></div>
+                            <span class="text-xs font-semibold text-white/80 ml-2">ALIEN_TERMINAL // v1.0.4</span>
+                        </div>
+                        <span class="text-[10px] text-alien-green/50">TYPE 'help'</span>
+                    </div>
+
+                    <!-- Terminal Output Window -->
+                    <div id="terminalOutput" class="bg-alien-dark/90 rounded-xl p-3 h-48 overflow-y-auto text-xs font-mono border border-alien-border/30 flex flex-col gap-1 text-alien-green/90 leading-relaxed shadow-alien-inset">
+                        <div><span class="text-alien-bright">ALIEN OS</span> Shell initialized... Type <span class="text-white font-bold">'help'</span> for a list of transmissions.</div>
+                    </div>
+
+                    <!-- Terminal Command Input Line -->
+                    <form id="terminalForm" class="flex items-center gap-2 bg-alien-dark/90 border border-alien-border/60 rounded-xl px-3 py-2">
+                        <span class="text-alien-bright font-bold">&gt;</span>
+                        <input type="text" id="terminalInput" placeholder="Enter command..." class="w-full bg-transparent text-xs text-white placeholder-alien-green/30 focus:outline-none font-mono">
+                        <button type="submit" class="text-alien-bright hover:text-white text-xs px-2"><i class="fas fa-terminal"></i></button>
+                    </form>
+                </div>
+
+            </section>
+        </main>
+
+        <!-- FOOTER -->
+        <footer class="glass-panel rounded-2xl p-4 text-center text-xs text-alien-green/60 border-alien-border/40 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div>
+                &copy; 2026 <span class="text-alien-bright font-semibold">ALIEN OS TRANSMISSION UNIT</span>. DEPLOYED ON GITHUB.
+            </div>
+            <div class="flex items-center gap-4 text-sm">
+                <a href="https://github.com" target="_blank" class="text-alien-green hover:text-white transition-colors" title="GitHub Portal"><i class="fab fa-github"></i></a>
+                <a href="#alienMascot" class="text-alien-green hover:text-white transition-colors" title="Top of Page"><i class="fas fa-chevron-up"></i></a>
+            </div>
+        </footer>
+    </div>
+
+    <!-- MAIN JAVASCRIPT SYSTEM LOGIC -->
+    <script>
+        /* ==========================================================================
+           1. WEB AUDIO API SYNTHESIZER (SFX ENGINE)
+           ========================================================================== */
+        let audioCtx = null;
+        let sfxEnabled = true;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        // SFX Generator functions using Web Audio Oscillators
+        const playSFX = {
+            click: () => {
+                if (!sfxEnabled) return;
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.05);
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.05);
+            },
+            beam: () => {
+                if (!sfxEnabled) return;
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.2);
+            },
+            zap: () => {
+                if (!sfxEnabled) return;
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(40, audioCtx.currentTime + 0.25);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.25);
+            },
+            glitch: () => {
+                if (!sfxEnabled) return;
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(100 + Math.random() * 500, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.08);
+            }
+        };
+
+        // Sound Toggle Handler
+        const sfxToggleBtn = document.getElementById('sfxToggleBtn');
+        const sfxIcon = document.getElementById('sfxIcon');
+        const sfxText = document.getElementById('sfxText');
+
+        sfxToggleBtn.addEventListener('click', () => {
+            sfxEnabled = !sfxEnabled;
+            if (sfxEnabled) {
+                sfxIcon.className = 'fas fa-volume-high text-alien-bright';
+                sfxText.textContent = 'SFX: ON';
+                playSFX.click();
+            } else {
+                sfxIcon.className = 'fas fa-volume-xmark text-red-400';
+                sfxText.textContent = 'SFX: OFF';
+            }
+        });
+
+        /* ==========================================================================
+           2. MATRIX RAIN CANVAS BACKGROUND
+           ========================================================================== */
+        const matrixCanvas = document.getElementById('matrixCanvas');
+        const mCtx = matrixCanvas.getContext('2d');
+
+        function resizeMatrixCanvas() {
+            matrixCanvas.width = window.innerWidth;
+            matrixCanvas.height = window.innerHeight;
+        }
+        resizeMatrixCanvas();
+        window.addEventListener('resize', resizeMatrixCanvas);
+
+        const matrixChars = '01101001 👽 🛸 ⎎ ⌰ ⍜ ⍜ ⌿ ☌ ⍀ ⟒ ⟒ ⟁ ⟟ ⋏ ☊ ⍙ ⟒ 2 ⟒ GITHUB ALIEN CYBER MATRIX';
+        const fontSize = 14;
+        let columns = Math.floor(matrixCanvas.width / fontSize);
+        let drops = Array(columns).fill(1);
+
+        function drawMatrix() {
+            mCtx.fillStyle = 'rgba(5, 7, 13, 0.08)';
+            mCtx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+
+            mCtx.fillStyle = '#00ff66';
+            mCtx.font = fontSize + 'px monospace';
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = matrixChars.charAt(Math.floor(Math.random() * matrixChars.length));
+                mCtx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                if (drops[i] * fontSize > matrixCanvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+        setInterval(drawMatrix, 40);
+
+        /* ==========================================================================
+           3. INTERACTIVE ALIEN MASCOT EYE TRACKING
+           ========================================================================== */
+        const alienMascot = document.getElementById('alienMascot');
+        const leftPupil = document.getElementById('leftPupil');
+        const rightPupil = document.getElementById('rightPupil');
+
+        document.addEventListener('mousemove', (e) => {
+            if (!alienMascot) return;
+            const rect = alienMascot.getBoundingClientRect();
+            const mascotCenterX = rect.left + rect.width / 2;
+            const mascotCenterY = rect.top + rect.height / 2;
+
+            const angle = Math.atan2(e.clientY - mascotCenterY, e.clientX - mascotCenterX);
+            const distance = Math.min(4, Math.hypot(e.clientX - mascotCenterX, e.clientY - mascotCenterY) / 30);
+
+            const pupilX = Math.cos(angle) * distance;
+            const pupilY = Math.sin(angle) * distance;
+
+            leftPupil.setAttribute('transform', `translate(${pupilX}, ${pupilY})`);
+            rightPupil.setAttribute('transform', `translate(${pupilX}, ${pupilY})`);
+        });
+
+        alienMascot.addEventListener('click', () => {
+            playSFX.beam();
+            alienMascot.classList.add('scale-125', 'rotate-12');
+            setTimeout(() => alienMascot.classList.remove('scale-125', 'rotate-12'), 300);
+            appendTerminalOutput("ALEN MASCOT TELEMETRY: 'Greetings Commander! Signals optimal.'");
+        });
+
+        /* ==========================================================================
+           4. GITHUB ALIEN DECODER (API SCANNER)
+           ========================================================================== */
+        const usernameInput = document.getElementById('githubUsernameInput');
+        const fetchGithubBtn = document.getElementById('fetchGithubBtn');
+        const profilePlaceholder = document.getElementById('profilePlaceholder');
+        const profileDataContent = document.getElementById('profileDataContent');
+
+        async function fetchGitHubProfile(username) {
+            if (!username.trim()) return;
+
+            playSFX.click();
+            profilePlaceholder.classList.add('hidden');
+            profileDataContent.classList.remove('hidden');
+            profileDataContent.innerHTML = `
+                <div class="text-center py-8 text-alien-bright flex flex-col items-center gap-2">
+                    <i class="fas fa-atom fa-spin text-3xl"></i>
+                    <p class="text-xs tracking-widest uppercase">DECODING EXTRATERRESTRIAL SIGNALS FOR [${username.toUpperCase()}]...</p>
+                </div>
+            `;
+
+            try {
+                const userRes = await fetch(`https://api.github.com/users/${username}`);
+                if (!userRes.ok) throw new Error('EXTRATERRESTRIAL SIGNAL NOT FOUND');
+                const userData = await userRes.json();
+
+                const reposRes = await fetch(`https://api.github.com/users/${username}/repos?sort=updated&per_page=4`);
+                const reposData = await reposRes.json();
+
+                renderGitHubProfile(userData, reposData);
+                playSFX.beam();
+                appendTerminalOutput(`SCAN COMPLETE: Decoded profile [${userData.login}] with ${userData.public_repos} alien code factories.`);
+            } catch (err) {
+                renderMockProfile(username);
+                playSFX.glitch();
+            }
+        }
+
+        function renderGitHubProfile(user, repos) {
+            profileDataContent.innerHTML = `
+                <div class="flex flex-col sm:flex-row items-center sm:items-start gap-4 border-b border-alien-border/30 pb-4">
+                    <img src="${user.avatar_url}" alt="Alien Avatar" class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl border-2 border-alien-bright shadow-[0_0_15px_rgba(57,255,20,0.4)]">
+                    <div class="text-center sm:text-left flex-grow">
+                        <div class="flex flex-col sm:flex-row items-center justify-between gap-2">
+                            <h3 class="text-base sm:text-lg font-bold text-white">${user.name || user.login} <span class="text-xs text-alien-bright font-normal">(@${user.login})</span></h3>
+                            <a href="${user.html_url}" target="_blank" class="text-xs bg-alien-green/20 border border-alien-green hover:bg-alien-green hover:text-black font-semibold px-3 py-1 rounded-lg transition-all">
+                                OPEN FREQUENCY <i class="fas fa-external-link-alt ml-1"></i>
+                            </a>
+                        </div>
+                        <p class="text-xs text-alien-green/80 mt-1">${user.bio || 'No public alien transmissions available.'}</p>
+                        <div class="flex items-center justify-center sm:justify-start gap-4 text-xs mt-3 text-white">
+                            <span><i class="fas fa-code-branch text-alien-bright"></i> Repos: ${user.public_repos}</span>
+                            <span><i class="fas fa-users text-alien-bright"></i> Followers: ${user.followers}</span>
+                            <span><i class="fas fa-map-marker-alt text-alien-bright"></i> ${user.location || 'Deep Space'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-xs uppercase tracking-wider text-alien-bright mb-2">Active Code Factories (Repositories):</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        ${repos.map(r => `
+                            <a href="${r.html_url}" target="_blank" class="bg-alien-dark/80 p-3 rounded-lg border border-alien-border/40 hover:border-alien-bright transition-all group">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-bold text-xs text-white group-hover:text-alien-bright truncate">${r.name}</span>
+                                    <span class="text-[10px] text-alien-bright/80"><i class="fas fa-star"></i> ${r.stargazers_count}</span>
+                                </div>
+                                <p class="text-[11px] text-alien-green/60 truncate mt-1">${r.description || 'Alien transmission data module.'}</p>
+                            </a>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderMockProfile(username) {
+            profileDataContent.innerHTML = `
+                <div class="text-xs text-red-400 mb-2 flex items-center gap-2">
+                    <i class="fas fa-triangle-exclamation"></i> LIVE API TIMEOUT / UNABLE TO REACH EARTH ORBIT. DISPLAYING SIMULATED ALIEN PROFILE:
+                </div>
+                <div class="flex flex-col sm:flex-row items-center sm:items-start gap-4 border-b border-alien-border/30 pb-4">
+                    <div class="w-16 h-16 rounded-xl bg-alien-green/20 border-2 border-alien-bright flex items-center justify-center text-alien-bright text-2xl font-bold">
+                        👽
+                    </div>
+                    <div class="text-center sm:text-left flex-grow">
+                        <h3 class="text-base sm:text-lg font-bold text-white">${username.toUpperCase()} <span class="text-xs text-alien-bright font-normal">(SIMULATED_UNIT)</span></h3>
+                        <p class="text-xs text-alien-green/80 mt-1">Extraterrestrial coder operating from Sector 7-G. High priority signals detected.</p>
+                        <div class="flex items-center justify-center sm:justify-start gap-4 text-xs mt-3 text-white">
+                            <span><i class="fas fa-code-branch text-alien-bright"></i> Repos: 42</span>
+                            <span><i class="fas fa-users text-alien-bright"></i> Followers: 1337</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+                    <div class="bg-alien-dark/80 p-2.5 rounded-lg border border-alien-border/40">
+                        <span class="font-bold text-xs text-white">alien-matrix-core</span>
+                        <p class="text-[10px] text-alien-green/60">Quantum alien neural networking library.</p>
+                    </div>
+                    <div class="bg-alien-dark/80 p-2.5 rounded-lg border border-alien-border/40">
+                        <span class="font-bold text-xs text-white">ufo-beam-protocol</span>
+                        <p class="text-[10px] text-alien-green/60">High-speed tractor beam driver for GitHub octocats.</p>
+                    </div>
+                </div>
+            `;
+            appendTerminalOutput(`WARNING: Direct frequency fallback engaged for target [${username}].`);
+        }
+
+        fetchGithubBtn.addEventListener('click', () => fetchGitHubProfile(usernameInput.value));
+        usernameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') fetchGitHubProfile(usernameInput.value);
+        });
+
+        /* ==========================================================================
+           5. ALIEN GLYPH & CODE TRANSFORMER
+           ========================================================================== */
+        const glyphInput = document.getElementById('glyphInput');
+        const glyphOutput = document.getElementById('glyphOutput');
+        const copyGlyphBtn = document.getElementById('copyGlyphBtn');
+
+        const glyphMap = {
+            'a': '⏃', 'b': '⎎', 'c': '☊', 'd': '3', 'e': '⟒', 'f': '⎎', 'g': '☌',
+            'h': '⠓', 'i': '⟟', 'j': '⟊', 'k': '☍', 'l': '⌰', 'm': '⏁', 'n': '⋏',
+            'o': '⍜', 'p': '2', 'q': '⍾', 'r': '⍀', 's': '⌇', 't': '⟁', 'u': '⎍',
+            'v': '⎐', 'w': '⍙', 'x': '⌖', 'y': '⎔', 'z': '⋇', ' ': ' // '
+        };
+
+        function translateToAlienGlyph(text) {
+            return text.toLowerCase().split('').map(char => glyphMap[char] || char).join('');
+        }
+
+        glyphInput.addEventListener('input', () => {
+            const translated = translateToAlienGlyph(glyphInput.value);
+            glyphOutput.textContent = translated || '...';
+            playSFX.glitch();
+        });
+
+        copyGlyphBtn.addEventListener('click', () => {
+            playSFX.click();
+            const textToCopy = glyphOutput.textContent;
+            
+            // Clipboard copy with fallback
+            const textarea = document.createElement('textarea');
+            textarea.value = textToCopy;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+
+            copyGlyphBtn.innerHTML = `<i class="fas fa-check text-alien-bright"></i> COPIED!`;
+            setTimeout(() => {
+                copyGlyphBtn.innerHTML = `<i class="fas fa-copy"></i> COPY CIPHER`;
+            }, 2000);
+        });
+
+        /* ==========================================================================
+           6. MINI GAME: UFO ABDUCTION INVADERS
+           ========================================================================== */
+        const canvas = document.getElementById('ufoGameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameOverlay = document.getElementById('gameOverlay');
+        const startGameBtn = document.getElementById('startGameBtn');
+        const overlayTitle = document.getElementById('overlayTitle');
+        const overlaySubtitle = document.getElementById('overlaySubtitle');
+        const scoreEl = document.getElementById('gameScore');
+        const highScoreEl = document.getElementById('gameHighScore');
+
+        let gameActive = false;
+        let score = 0;
+        let highScore = 0;
+        let animationFrameId = null;
+
+        function resizeGameCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+        resizeGameCanvas();
+        window.addEventListener('resize', resizeGameCanvas);
+
+        // Player UFO Object
+        const ufo = {
+            x: canvas.width / 2,
+            y: canvas.height - 40,
+            width: 50,
+            height: 24,
+            speed: 6,
+            dx: 0
+        };
+
+        let items = [];
+        let particles = [];
+
+        // Controls State
+        const keys = { left: false, right: false };
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = true;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
+        });
+
+        // Touch & Mouse Control on Canvas
+        let isDragging = false;
+        canvas.addEventListener('mousedown', (e) => { isDragging = true; updateUFOByPointer(e); });
+        canvas.addEventListener('mousemove', (e) => { if (isDragging) updateUFOByPointer(e); });
+        window.addEventListener('mouseup', () => { isDragging = false; });
+
+        canvas.addEventListener('touchstart', (e) => { isDragging = true; updateUFOByPointer(e.touches[0]); });
+        canvas.addEventListener('touchmove', (e) => { if (isDragging) updateUFOByPointer(e.touches[0]); });
+        window.addEventListener('touchend', () => { isDragging = false; });
+
+        // Mobile Buttons
+        const btnMoveLeft = document.getElementById('btnMoveLeft');
+        const btnMoveRight = document.getElementById('btnMoveRight');
+
+        btnMoveLeft.addEventListener('touchstart', (e) => { e.preventDefault(); keys.left = true; });
+        btnMoveLeft.addEventListener('touchend', () => keys.left = false);
+        btnMoveRight.addEventListener('touchstart', (e) => { e.preventDefault(); keys.right = true; });
+        btnMoveRight.addEventListener('touchend', () => keys.right = false);
+
+        function updateUFOByPointer(e) {
+            const rect = canvas.getBoundingClientRect();
+            const pointerX = e.clientX - rect.left;
+            ufo.x = Math.max(ufo.width / 2, Math.min(canvas.width - ufo.width / 2, pointerX));
+        }
+
+        function spawnItem() {
+            if (!gameActive) return;
+            const isDebris = Math.random() < 0.35;
+            items.push({
+                x: Math.random() * (canvas.width - 30) + 15,
+                y: -20,
+                radius: isDebris ? 12 : 10,
+                type: isDebris ? 'debris' : (Math.random() < 0.3 ? 'octocat' : 'star'),
+                speed: 2 + Math.random() * 2.5
+            });
+        }
+
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 10; i++) {
+                particles.push({
+                    x, y,
+                    dx: (Math.random() - 0.5) * 6,
+                    dy: (Math.random() - 0.5) * 6,
+                    radius: Math.random() * 3 + 1,
+                    color,
+                    life: 20
+                });
+            }
+        }
+
+        function updateGame() {
+            if (!gameActive) return;
+
+            // Move UFO
+            if (keys.left) ufo.x -= ufo.speed;
+            if (keys.right) ufo.x += ufo.speed;
+            ufo.x = Math.max(ufo.width / 2, Math.min(canvas.width - ufo.width / 2, ufo.x));
+
+            // Clear Canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Beam Effect under UFO
+            ctx.fillStyle = 'rgba(0, 255, 102, 0.15)';
+            ctx.beginPath();
+            ctx.moveTo(ufo.x - 12, ufo.y);
+            ctx.lineTo(ufo.x + 12, ufo.y);
+            ctx.lineTo(ufo.x + 25, canvas.height);
+            ctx.lineTo(ufo.x - 25, canvas.height);
+            ctx.closePath();
+            ctx.fill();
+
+            // Draw UFO
+            ctx.fillStyle = '#39ff14';
+            ctx.beginPath();
+            ctx.ellipse(ufo.x, ufo.y - 4, ufo.width / 4, ufo.height / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#00ff66';
+            ctx.beginPath();
+            ctx.ellipse(ufo.x, ufo.y, ufo.width / 2, ufo.height / 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // UFO Lights
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(ufo.x - 15, ufo.y + 2, 4, 3);
+            ctx.fillRect(ufo.x, ufo.y + 4, 4, 3);
+            ctx.fillRect(ufo.x + 12, ufo.y + 2, 4, 3);
+
+            // Update & Draw Items
+            for (let i = items.length - 1; i >= 0; i--) {
+                const item = items[i];
+                item.y += item.speed;
+
+                // Draw Item
+                if (item.type === 'star') {
+                    ctx.fillStyle = '#39ff14';
+                    ctx.beginPath();
+                    ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (item.type === 'octocat') {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '14px FontAwesome';
+                    ctx.fillText('🐙', item.x - 7, item.y + 5);
+                } else { // Debris / Asteroid
+                    ctx.fillStyle = '#ff4444';
+                    ctx.beginPath();
+                    ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Check Beam / UFO Collision
+                const distY = Math.abs(item.y - ufo.y);
+                const distX = Math.abs(item.x - ufo.x);
+
+                if (distY < 20 && distX < ufo.width / 2 + 10) {
+                    if (item.type === 'debris') {
+                        // Game Over
+                        playSFX.zap();
+                        createExplosion(item.x, item.y, '#ff4444');
+                        endGame();
+                        return;
+                    } else {
+                        // Caught Item
+                        playSFX.beam();
+                        score += (item.type === 'octocat' ? 25 : 10);
+                        scoreEl.textContent = score;
+                        createExplosion(item.x, item.y, '#00ff66');
+                        items.splice(i, 1);
+                        continue;
+                    }
+                }
+
+                // Remove offscreen
+                if (item.y > canvas.height + 20) {
+                    items.splice(i, 1);
+                }
+            }
+
+            // Update Explosions
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.dx;
+                p.y += p.dy;
+                p.life--;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            animationFrameId = requestAnimationFrame(updateGame);
+        }
+
+        let spawnInterval = null;
+
+        function startGame() {
+            playSFX.click();
+            gameActive = true;
+            score = 0;
+            items = [];
+            particles = [];
+            scoreEl.textContent = '0';
+            gameOverlay.classList.add('hidden');
+            ufo.x = canvas.width / 2;
+
+            if (spawnInterval) clearInterval(spawnInterval);
+            spawnInterval = setInterval(spawnItem, 600);
+
+            cancelAnimationFrame(animationFrameId);
+            updateGame();
+            appendTerminalOutput("UFO ABDUCTION MISSION INITIATED!");
+        }
+
+        function endGame() {
+            gameActive = false;
+            clearInterval(spawnInterval);
+            if (score > highScore) {
+                highScore = score;
+                highScoreEl.textContent = highScore;
+            }
+
+            overlayTitle.textContent = "MISSION ABORTED!";
+            overlaySubtitle.innerHTML = `Cosmic Debris Destroyed UFO Tractor Beam.<br>FINAL SCORE: <span class="text-alien-bright font-bold">${score}</span>`;
+            startGameBtn.textContent = "RETRY TRANSMISSION";
+            gameOverlay.classList.remove('hidden');
+            appendTerminalOutput(`GAME OVER: Tractor beam collapsed. Final Score: ${score}`);
+        }
+
+        startGameBtn.addEventListener('click', startGame);
+
+        /* ==========================================================================
+           7. ALIEN CYBER TERMINAL COMMAND HANDLER
+           ========================================================================== */
+        const terminalOutput = document.getElementById('terminalOutput');
+        const terminalForm = document.getElementById('terminalForm');
+        const terminalInput = document.getElementById('terminalInput');
+
+        function appendTerminalOutput(text, isCommand = false) {
+            const line = document.createElement('div');
+            if (isCommand) {
+                line.innerHTML = `<span class="text-white">&gt; ${text}</span>`;
+            } else {
+                line.innerHTML = `<span class="text-alien-green/90">${text}</span>`;
+            }
+            terminalOutput.appendChild(line);
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        }
+
+        const terminalCommands = {
+            'help': 'Available commands: [scan, beam, alien-facts, github, clear, status]',
+            'scan': 'Initiating deep space scan... Signals detected in Sector 4! 🛸',
+            'beam': 'Tractor beam energized! Ready to abduct star particles.',
+            'github': 'GitHub Transmission Unit connected to live Earth APIs.',
+            'alien-facts': () => {
+                const facts = [
+                    "Fact #1: Aliens prefer dark mode and green phosphor displays.",
+                    "Fact #2: The Wow! Signal was actually an unhandled GitHub pull request.",
+                    "Fact #3: Octocats are sacred extraterrestrial guardians in Sector 9."
+                ];
+                return facts[Math.floor(Math.random() * facts.length)];
+            },
+            'status': 'ALL SYSTEMS OPERATIONAL // UFO SPEED: 100% // SIGNAL: CONNECTED',
+            'clear': () => {
+                terminalOutput.innerHTML = '';
+                return null;
+            }
+        };
+
+        terminalForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const cmd = terminalInput.value.trim().toLowerCase();
+            if (!cmd) return;
+
+            playSFX.click();
+            appendTerminalOutput(cmd, true);
+            terminalInput.value = '';
+
+            if (terminalCommands[cmd]) {
+                const response = typeof terminalCommands[cmd] === 'function' ? terminalCommands[cmd]() : terminalCommands[cmd];
+                if (response) {
+                    setTimeout(() => appendTerminalOutput(response), 150);
+                }
+            } else {
+                setTimeout(() => appendTerminalOutput(`Command not recognized: '${cmd}'. Type 'help' for transmission manual.`), 150);
+            }
+        });
+
+        // Initialize audio on first user touch / key press
+        window.addEventListener('click', initAudio, { once: true });
+        window.addEventListener('keydown', initAudio, { once: true });
+    </script>
+</body>
+</html>
